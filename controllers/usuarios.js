@@ -1,6 +1,10 @@
-const { response } = require('express');
+const { response, request } = require('express');
+const bcryptjs = require('bcryptjs');
 
-const usuariosGet = (req, res = response) => {
+const Usuario = require('../models/usuario'); //Al momento de llamar un esquema. Se debe comenzar con mayúscula. Es un estandar
+
+
+const usuariosGet = (req = request, res = response) => {
 
     const { q, nombre = 'No name', apikey, page = false, limit } = req.query;
 
@@ -24,15 +28,34 @@ const usuariosPut = (req, res = response) => {
     });
 }
 
-const usuariosPost = (req, res = response) => {
+const usuariosPost = async(req, res = response) => {
 
-    //const body = req.body; 
-    const { nombre, edad } = req.body;
+
+
+    const { nombre, correo, password, rol } = req.body;
+    // const body = req.body;
+
+    // const usuario = new Usuario(body);
+    const usuario = new Usuario({ nombre, correo, password, rol });
+
+    //Verificar si el correo existe
+    const existeEmail = await Usuario.findOne({ correo });
+    if (existeEmail) {
+        return res.status(400).json({
+            msg: 'El correo ya se encuentra registrado.'
+        });
+    }
+
+    //Encriptar contraseña (Hash de la contraseña)
+    const salt = bcryptjs.genSaltSync(); //SaltSync: Número de vuelta que requiere el usuario para hacer más compleja la desencripación (10 por defecto)
+    usuario.password = bcryptjs.hashSync(password, salt);
+
+    //Guardar en BD
+    await usuario.save();
 
     res.json({
         msg: "Soy el mejor post-controlador",
-        nombre,
-        edad
+        usuario
     });
 }
 
